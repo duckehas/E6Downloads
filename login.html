@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Engine6.0 – Terminal Access</title>
+<style>
+* { box-sizing: border-box; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; }
+body { height: 100vh; width: 100vw; background-color: #1f1f1f; background-image: linear-gradient(rgba(34,197,94,0.2) 2px, transparent 2px), linear-gradient(90deg, rgba(34,197,94,0.2) 2px, transparent 2px); background-size: 60px 60px; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; padding-top: 60px; color: #e5e7eb; position: relative; }
+.terminal-window { width: 560px; background: linear-gradient(180deg, #1c1c1c, #141414); border-radius: 26px; box-shadow: 0 40px 120px rgba(0,0,0,0.9), 0 0 50px rgba(34,197,94,0.15); overflow: hidden; z-index: 1; }
+.window-header { display: flex; align-items: center; padding: 14px 18px; background: #121212; }
+.dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+.red { background: #ff5f56; }
+.yellow { background: #ffbd2e; }
+.green { background: #27c93f; }
+.title { margin: auto; font-size: 13px; color: #9ca3af; }
+.content { padding: 40px; }
+h1 { margin: 22px 0 6px; font-size: 32px; }
+.subtitle { color: #9ca3af; margin-bottom: 28px; }
+.alert { background: #1f1f1f; border: 1px solid rgba(34,197,94,0.35); padding: 14px; border-radius: 14px; color: #86efac; margin-bottom: 26px; }
+label { font-size: 14px; color: #d1d5db; margin-top: 18px; display: block; }
+input[type="text"], input[type="password"] { width: 100%; padding: 16px 18px; margin-top: 8px; background: #ffffff; border-radius: 16px; border: 1px solid #d1d5db; }
+input:focus { outline: none; border-color: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,0.25); }
+.options { display: flex; justify-content: space-between; align-items: center; margin: 22px 0; font-size: 13px; }
+.checkbox { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.checkbox input { display: none; }
+.box { width: 18px; height: 18px; border-radius: 6px; border: 1px solid #22c55e; display: grid; place-items: center; transition: transform 0.15s ease, box-shadow 0.2s ease; }
+.box::after { content: "✓"; font-size: 12px; color: #052e16; transform: scale(0); transition: transform 0.2s ease; }
+.checkbox input:checked + .box { background: #22c55e; box-shadow: 0 0 12px rgba(34,197,94,0.6); transform: scale(1.05); }
+.checkbox input:checked + .box::after { transform: scale(1); }
+.options a { color: #22c55e; text-decoration: none; transition: opacity 0.2s ease; }
+.options a:hover { opacity: 0.7; }
+.primary-btn { position: relative; width: 100%; padding: 14px; border-radius: 30px; border: none; background: linear-gradient(180deg, #22c55e, #15803d); color: #052e16; font-size: 15px; font-weight: 700; cursor: pointer; overflow: hidden; transition: transform 0.35s ease, box-shadow 0.35s ease; box-shadow: 0 10px 30px rgba(34,197,94,0.45), inset 0 1px 0 rgba(255,255,255,0.3); }
+.primary-btn::before { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.85), transparent 70%); transform: translateX(-120%); transition: transform 0.8s ease; }
+.primary-btn:hover { background: #ffffff; color: #111827; transform: translateY(-2px); }
+.primary-btn:hover::before { transform: translateX(120%); }
+.secure-wrap { margin-top: 28px; padding: 2px; border-radius: 18px; background: linear-gradient(90deg, transparent, rgba(34,197,94,0.8), transparent); background-size: 200% 100%; animation: glowMove 3.5s ease-in-out infinite; }
+@keyframes glowMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+.secure { background: #1f1f1f; border-radius: 16px; padding: 14px; text-align: center; color: #86efac; font-size: 13px; }
+.live-status { margin-top: 14px; font-size: 12px; color: #6ee7b7; font-family: monospace; }
+.footer { margin-top: 28px; font-size: 14px; text-align: center; }
+.footer a { color: #22c55e; }
+canvas#snow { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="snow"></canvas>
+<div class="terminal-window">
+  <div class="window-header">
+    <span class="dot red"></span>
+    <span class="dot yellow"></span>
+    <span class="dot green"></span>
+    <span class="title">Https://Engine6.0.com — Terminal Access</span>
+  </div>
+  <div class="content">
+    <h1>Terminal Access</h1>
+    <p class="subtitle">Enter your credentials</p>
+    <div class="alert" id="status">Awaiting input</div>
+
+    <label>Username</label><input type="text" id="username" placeholder="username">
+    <label>Email (only for signup)</label><input type="text" id="email" placeholder="Enter your Email">
+    <label>Password</label><input type="password" id="password" placeholder="Enter your password">
+    <label>Access Key (only for signup)</label><input type="text" id="accessKey" placeholder="Enter your access key">
+    <label>Discord Id (only for signup)</label><input type="text" id="discordId" placeholder="Enter your Discord Id">
+
+    <div class="options">
+      <label class="checkbox"><input type="checkbox" id="rememberMe"><span class="box"></span>Remember this device</label>
+      <label class="checkbox"><input type="checkbox" id="tos"><span class="box"></span>I agree to Terms of Service (signup only)</label>
+    </div>
+
+    <button class="primary-btn" id="loginBtn">Login / Signup</button>
+    <div class="secure-wrap"><div class="secure">🛡️ SECURE CONNECTION</div></div>
+    <div class="live-status" id="liveStatus">$ initializing…</div>
+    <p class="footer">Don't have an account? Fill all fields to signup.</p>
+  </div>
+</div>
+
+<script>
+// Access key required for signup
+const validAccessKey = "ENGINE-2025";
+
+// Live terminal status
+const statuses = ["Initializing secure channel…", "Verifying encryption…", "Performing handshake…", "Connection secure"];
+let index = 0;
+const live = document.getElementById("liveStatus");
+const interval = setInterval(() => { 
+  live.textContent = "$ " + statuses[index]; 
+  index++; 
+  if(index===statuses.length) clearInterval(interval); 
+},1200);
+
+const btn = document.getElementById("loginBtn");
+const statusEl = document.getElementById("status");
+
+btn.onclick = () => {
+  const username = document.getElementById('username').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const accessKey = document.getElementById('accessKey').value.trim();
+  const discordId = document.getElementById('discordId').value.trim();
+  const rememberMe = document.getElementById('rememberMe').checked;
+  const tos = document.getElementById('tos').checked;
+
+  if(!username || !password){ statusEl.textContent="⚠️ Username and password required."; return; }
+
+  let accounts = JSON.parse(localStorage.getItem('accounts')||'[]');
+  const existing = accounts.find(a => a.username === username);
+
+  // Login if username exists
+  if(existing){
+    if(existing.password === password){
+      statusEl.textContent="✅ Login successful! Redirecting…";
+      if(rememberMe) localStorage.setItem('rememberMe',username);
+      setTimeout(()=>{ window.location.href='Untitled-1.html'; }, 1500);
+    } else {
+      statusEl.textContent="⚠️ Incorrect password.";
+    }
+    return;
+  }
+
+  // Signup if username does not exist
+  if(!email || !accessKey || !discordId){ 
+    statusEl.textContent="⚠️ Fill all fields to signup."; 
+    return; 
+  }
+  if(!tos){ statusEl.textContent="⚠️ You must agree to Terms of Service."; return; }
+  if(accessKey !== validAccessKey){ statusEl.textContent="⚠️ Invalid access key."; return; }
+
+  statusEl.textContent="Creating account…"; btn.textContent="Creating…"; btn.disabled=true;
+  setTimeout(()=>{
+    const newAccount = {username,email,password,accessKey,discordId};
+    accounts.push(newAccount);
+    localStorage.setItem('accounts',JSON.stringify(accounts));
+    if(rememberMe) localStorage.setItem('rememberMe',username);
+    statusEl.textContent="✅ Account created successfully! Redirecting…";
+    btn.textContent="Access Granted";
+    setTimeout(()=>{ window.location.href='welcome.html'; }, 1500);
+  }, 2000);
+}
+
+// Auto-fill remembered username
+const rememberedUser = localStorage.getItem('rememberMe');
+if(rememberedUser){
+  document.getElementById('username').value = rememberedUser;
+  statusEl.textContent=`✅ Welcome back, ${rememberedUser}! Please login.`;
+}
+</script>
+
+<script>
+// Snow canvas background
+const canvas=document.getElementById('snow');const ctx=canvas.getContext('2d');
+let width=canvas.width=window.innerWidth,height=canvas.height=window.innerHeight;
+class Snowflake{constructor(){this.reset()}reset(){this.x=Math.random()*width;this.y=Math.random()*-height;this.radius=1+Math.random()*4;this.speed=1+Math.random()*3;this.wind=Math.random()*2-1;this.opacity=0.3+Math.random()*0.7}update(){this.y+=this.speed;this.x+=this.wind;if(this.y>height)this.reset();if(this.x>width)this.x=0;if(this.x<0)this.x=width}draw(){ctx.beginPath();ctx.arc(this.x,this.y,this.radius,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${this.opacity})`;ctx.fill()}}const snowflakes=[];for(let i=0;i<200;i++)snowflakes.push(new Snowflake());function animate(){ctx.clearRect(0,0,width,height);snowflakes.forEach(s=>{s.update();s.draw();});requestAnimationFrame(animate)}animate();window.addEventListener('resize',()=>{width=canvas.width=window.innerWidth;height=canvas.height=window.innerHeight});
+</script>
+</body>
+</html>
+<script>
+/* ================================
+   BASIC ANTI-INSPECT
+================================ */
+
+// Disable right click
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Disable text selection
+document.addEventListener('selectstart', e => e.preventDefault());
+
+// Disable drag (images, text)
+document.addEventListener('dragstart', e => e.preventDefault());
+
+// Block common key combos
+document.addEventListener('keydown', function(e){
+  const key = e.key.toLowerCase();
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl / Cmd combos (except copy/paste/cut now)
+  if ((e.ctrlKey || e.metaKey) && (
+    key === 's' || // save
+    key === 'u' || // view source
+    key === 'p' || // print
+    key === 'a' || // select all
+    key === 'i' || // inspect
+    key === 'j'    // dev console
+  )) {
+    e.preventDefault();
+  }
+
+  // Ctrl + Shift combos
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (
+    key === 'i' || key === 'j' || key === 'c'
+  )) {
+    e.preventDefault();
+  }
+});
+
+// Detect devtools open (size-based)
+(function(){
+  let devtoolsOpen = false;
+  const threshold = 160;
+
+  setInterval(() => {
+    const widthDiff = window.outerWidth - window.innerWidth;
+    const heightDiff = window.outerHeight - window.innerHeight;
+
+    if (widthDiff > threshold || heightDiff > threshold) {
+      if (!devtoolsOpen) {
+        devtoolsOpen = true;
+        document.body.innerHTML = `
+          <div style="
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:100vh;
+            background:#0f1115;
+            color:#22c55e;
+            font-family:Inter,sans-serif;
+            font-size:22px;
+            text-align:center;
+          ">
+            Developer tools detected.<br>Access denied.
+          </div>
+        `;
+      }
+    }
+  }, 500);
+})();
+
+// Disable console usage
+(function(){
+  const noop = ()=>{};
+  console.log = noop;
+  console.warn = noop;
+  console.error = noop;
+  console.info = noop;
+  console.debug = noop;
+})();
+
+// Block iframe embedding
+if (window.top !== window.self) {
+  window.top.location = window.self.location;
+}
+</script>

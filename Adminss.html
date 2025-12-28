@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Engine6.0 — Admin Panel</title>
+
+<style>
+* { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; margin:0; padding:0; }
+body {
+  height:100vh;
+  background:#0f1115;
+  color:#e5e7eb;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  overflow:hidden;
+}
+
+.panel {
+  width: 900px;
+  max-width: 95%;
+  background: linear-gradient(180deg, #1c1c1c, #121212);
+  border-radius: 26px;
+  box-shadow: 0 40px 120px rgba(0,0,0,.9), 0 0 60px rgba(34,197,94,.2);
+  overflow:hidden;
+}
+
+.header {
+  padding:16px 22px;
+  background:#121212;
+  display:flex;
+  align-items:center;
+}
+
+.dot { width:12px; height:12px; border-radius:50%; margin-right:8px; }
+.red{background:#ff5f56}
+.yellow{background:#ffbd2e}
+.green{background:#27c93f}
+
+.title {
+  margin:auto;
+  font-size:13px;
+  color:#9ca3af;
+}
+
+.content {
+  padding:30px;
+}
+
+h1 {
+  font-size:28px;
+  margin-bottom:14px;
+  color:#22c55e;
+}
+
+.controls {
+  display:flex;
+  gap:12px;
+  margin-bottom:20px;
+}
+
+button {
+  padding:10px 18px;
+  border-radius:20px;
+  border:none;
+  cursor:pointer;
+  font-weight:700;
+  background: linear-gradient(180deg,#22c55e,#15803d);
+  color:#052e16;
+  box-shadow:0 8px 20px rgba(34,197,94,.4);
+}
+
+button:hover {
+  background:#fff;
+  color:#111;
+}
+
+.terminal {
+  background:#020617;
+  border-radius:18px;
+  padding:20px;
+  font-family: ui-monospace, monospace;
+  font-size:13px;
+  max-height:420px;
+  overflow:auto;
+  white-space:pre-wrap;
+  border:1px solid rgba(34,197,94,.35);
+}
+
+.entry {
+  margin-bottom:14px;
+  padding-bottom:12px;
+  border-bottom:1px dashed rgba(34,197,94,.3);
+}
+
+.key { color:#22c55e; }
+.value { color:#e5e7eb; }
+
+.empty {
+  color:#9ca3af;
+  text-align:center;
+  margin-top:40px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="panel">
+  <div class="header">
+    <span class="dot red"></span>
+    <span class="dot yellow"></span>
+    <span class="dot green"></span>
+    <span class="title">Engine6.0 — Admin Console</span>
+  </div>
+
+  <div class="content">
+    <h1>Account Database</h1>
+
+    <div class="controls">
+      <button onclick="loadAccounts()">Refresh</button>
+      <button onclick="exportAccounts()">Export JSON</button>
+      <button onclick="clearAccounts()">Clear All</button>
+    </div>
+
+    <div class="terminal" id="output">
+      Loading accounts…
+    </div>
+  </div>
+</div>
+
+<script>
+function loadAccounts(){
+  const out = document.getElementById('output');
+  const accounts = JSON.parse(localStorage.getItem('accounts') || '[]');
+
+  if(accounts.length === 0){
+    out.innerHTML = '<div class="empty">No accounts found</div>';
+    return;
+  }
+
+  out.innerHTML = '';
+  accounts.forEach((a,i)=>{
+    out.innerHTML += `
+<div class="entry">
+<span class="key">#${i+1}</span>
+<span class="key">username:</span> <span class="value">${a.username}</span>
+<span class="key">email:</span> <span class="value">${a.email}</span>
+<span class="key">password:</span> <span class="value">${a.password}</span>
+<span class="key">accessKey:</span> <span class="value">${a.accessKey}</span>
+<span class="key">discord:</span> <span class="value">${a.discordId || '—'}</span>
+</div>`;
+  });
+}
+
+function clearAccounts(){
+  if(confirm("Delete ALL stored accounts?")){
+    localStorage.removeItem('accounts');
+    loadAccounts();
+  }
+}
+
+function exportAccounts(){
+  const data = localStorage.getItem('accounts') || '[]';
+  const blob = new Blob([data], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'engine6_accounts.json';
+  a.click();
+}
+
+loadAccounts();
+</script>
+
+</body>
+</html>
+<script>
+/* ================================
+   BASIC ANTI-INSPECT
+================================ */
+
+// Disable right click
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Disable text selection
+document.addEventListener('selectstart', e => e.preventDefault());
+
+// Disable drag (images, text)
+document.addEventListener('dragstart', e => e.preventDefault());
+
+// Block common key combos
+document.addEventListener('keydown', function(e){
+  const key = e.key.toLowerCase();
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl / Cmd combos (except copy/paste/cut now)
+  if ((e.ctrlKey || e.metaKey) && (
+    key === 's' || // save
+    key === 'u' || // view source
+    key === 'p' || // print
+    key === 'a' || // select all
+    key === 'i' || // inspect
+    key === 'j'    // dev console
+  )) {
+    e.preventDefault();
+  }
+
+  // Ctrl + Shift combos
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (
+    key === 'i' || key === 'j' || key === 'c'
+  )) {
+    e.preventDefault();
+  }
+});
+
+// Detect devtools open (size-based)
+(function(){
+  let devtoolsOpen = false;
+  const threshold = 160;
+
+  setInterval(() => {
+    const widthDiff = window.outerWidth - window.innerWidth;
+    const heightDiff = window.outerHeight - window.innerHeight;
+
+    if (widthDiff > threshold || heightDiff > threshold) {
+      if (!devtoolsOpen) {
+        devtoolsOpen = true;
+        document.body.innerHTML = `
+          <div style="
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:100vh;
+            background:#0f1115;
+            color:#22c55e;
+            font-family:Inter,sans-serif;
+            font-size:22px;
+            text-align:center;
+          ">
+            Developer tools detected.<br>Access denied.
+          </div>
+        `;
+      }
+    }
+  }, 500);
+})();
+
+// Disable console usage
+(function(){
+  const noop = ()=>{};
+  console.log = noop;
+  console.warn = noop;
+  console.error = noop;
+  console.info = noop;
+  console.debug = noop;
+})();
+
+// Block iframe embedding
+if (window.top !== window.self) {
+  window.top.location = window.self.location;
+}
+</script>

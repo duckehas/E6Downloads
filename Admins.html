@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin – Send Updates</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family: 'Inter', sans-serif; }
+body { background: radial-gradient(1200px 800px at 10% 10%, #141826, #0f1115); color: #fff; padding:40px; min-height:100vh; }
+h1 { color:#22c55e; margin-bottom:20px; }
+.panel { background: rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.12); border-radius:18px; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,0.6); }
+textarea { width:100%; height:120px; border-radius:12px; border:1px solid rgba(34,197,94,0.6); background: rgba(17,17,17,0.65); color:#fff; padding:12px; margin-bottom:12px; resize:none; }
+button { padding:12px 20px; border:none; border-radius:12px; background:#22c55e; color:#111; font-weight:700; cursor:pointer; transition:.2s; }
+button:hover { box-shadow:0 6px 18px rgba(34,197,94,0.45); }
+</style>
+</head>
+<body>
+
+<h1>Send Update</h1>
+
+<div class="panel">
+  <textarea id="updateMessage" placeholder="Type your update here..."></textarea>
+  <button id="sendUpdate">Send Update</button>
+  <ul id="logUpdates" style="margin-top:20px;"></ul>
+</div>
+
+<script>
+const updateMessage = document.getElementById('updateMessage');
+const sendUpdate = document.getElementById('sendUpdate');
+const logUpdates = document.getElementById('logUpdates');
+const updatesChannel = new BroadcastChannel('updates_channel');
+
+let sentUpdates = JSON.parse(localStorage.getItem('sentUpdates')||'[]');
+
+function renderLog() {
+  logUpdates.innerHTML = '';
+  if(sentUpdates.length===0){
+    logUpdates.innerHTML='<li style="color:#9fb4aa;">No updates sent yet</li>';
+    return;
+  }
+  sentUpdates.forEach(u=>{
+    const li=document.createElement('li');
+    li.textContent=u.message + ' [' + new Date(u.time).toLocaleString() + ']';
+    logUpdates.appendChild(li);
+  });
+}
+
+sendUpdate.addEventListener('click', ()=>{
+  const msg = updateMessage.value.trim();
+  if(!msg) return alert('Please type a message');
+  const data = { message: msg, time: new Date().toISOString() };
+  updatesChannel.postMessage(data);
+  sentUpdates.unshift(data);
+  localStorage.setItem('sentUpdates', JSON.stringify(sentUpdates));
+  updateMessage.value='';
+  renderLog();
+});
+
+renderLog();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Engine6.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+body { background: radial-gradient(1200px 800px at 10% 10%, #141826, #0f1115); color: #fff; display: flex; height: 100vh; overflow: hidden; }
+#snowCanvas { position: fixed; inset:0; z-index:0; pointer-events:none; }
+/* Sidebar */
+.sidebar { width: 240px; background: rgba(28,28,28,0.85); backdrop-filter: blur(10px); display: flex; flex-direction: column; padding: 30px 20px; box-shadow: 2px 0 15px rgba(0,0,0,0.5); z-index:2; position:relative; }
+.sidebar h2 { color: #22c55e; margin-bottom: 40px; font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+.sidebar a { color: #ccc; text-decoration: none; margin: 10px 0; padding: 12px 16px; border-radius: 10px; font-weight: 500; display: flex; align-items: center; transition: all 0.25s ease; cursor: pointer; }
+.sidebar a:hover { background: rgba(34,197,94,0.15); color: #22c55e; transform: translateX(3px); box-shadow: inset 0 0 0 1px rgba(34,197,94,0.35); }
+/* Terminal */
+.terminal { position: fixed; left: 50%; top: 50%; width: 860px; max-width: 95%; height: 520px; background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)); backdrop-filter: blur(24px) saturate(140%); border-radius: 22px; box-shadow: 0 20px 60px rgba(0,0,0,0.75); border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; overflow: hidden; resize: both; z-index:3; }
+.terminal.centered { transform: translate(-50%, -50%); }
+.terminal::after{ content:""; position:absolute; inset:0; pointer-events:none; background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.06), transparent 70%); }
+.terminal-header { background: rgba(34,197,94,0.12); padding: 12px 16px; color: #22c55e; font-weight: 600; cursor: move; display: flex; justify-content: space-between; align-items: center; letter-spacing: .3px; }
+.terminal-output { flex: 1; background: rgba(0,0,0,0.6); margin: 12px; border-radius: 14px; padding: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #e6edf3; overflow-y: auto; white-space: pre-wrap; line-height: 1.5; }
+.prompt { color:#22c55e; }
+.error { color:#ff6b6b; }
+.info { color:#9fe0b3; }
+.terminal-input { display: flex; margin: 12px; gap: 10px; position: relative; }
+.terminal-input input { flex: 1; padding: 12px 16px; border-radius: 14px; border: 1px solid rgba(34,197,94,0.6); background: rgba(17,17,17,0.65); color: #f1f7fb; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; z-index:5; position: relative; }
+.terminal-input input::placeholder{ color:#9fb4aa; }
+.terminal-input button { padding: 12px 22px; border-radius: 14px; background: #22c55e; border: none; color: #111; font-weight: 700; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+.terminal-input button:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(34,197,94,0.45); }
+/* Discord button */
+.discord-btn { width: 22px; height: 22px; display:inline-block; background: url('https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/discord.svg') no-repeat center/contain; cursor:pointer; transition: transform 0.2s, filter 0.2s; }
+.discord-btn:hover { transform: scale(1.2); filter: drop-shadow(0 0 6px #22c55e); }
+/* Warning Modal */
+.modal-bg { position: fixed; inset:0; background: rgba(0,0,0,0.65); display: none; align-items: center; justify-content: center; z-index: 999; }
+.modal { background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04)); backdrop-filter: blur(20px) saturate(140%); border-radius: 18px; width: 420px; max-width: 92%; border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 20px 50px rgba(0,0,0,0.7); padding: 28px 32px; display: flex; flex-direction: column; gap: 18px; }
+.modal h3 { color: #22c55e; font-size: 20px; letter-spacing:.3px; }
+.modal p { color:#e6edf3; }
+.modal button { background: #22c55e; color: #111; padding: 12px 18px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; }
+.modal button:hover { box-shadow: 0 6px 18px rgba(34,197,94,0.45); }
+/* Autocomplete */
+.autocomplete { position: absolute; bottom: 50px; left: 0; right: 0; background: rgba(0,0,0,0.9); border-radius: 8px; padding: 4px 0; display: none; z-index: 10; max-height: 200px; overflow-y: auto; }
+.autocomplete div { padding: 6px 12px; cursor: pointer; color:#f1f7fb; }
+.autocomplete div:hover { background: rgba(34,197,94,0.2); }
+</style>
+</head>
+<body>
+
+<canvas id="snowCanvas"></canvas>
+
+<div class="sidebar">
+  <h2>Engine6.0</h2>
+  <a href="#">Cmd Console</a>
+</div>
+
+<div class="terminal centered" id="terminal">
+  <div class="terminal-header" id="terminalHeader">
+    Glass Command Console
+    <span class="discord-btn" id="discordBtn"></span>
+  </div>
+  <div class="terminal-output" id="terminalOutput">Initializing panel...
+Waiting...
+Waiting...</div>
+  <div class="terminal-input">
+    <input type="text" id="terminalInput" placeholder="type a command and press enter" disabled />
+    <button id="terminalSubmit" disabled>Run</button>
+    <div class="autocomplete" id="autocomplete"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3>Security Warning</h3>
+    <p>You are about to continue to an external destination. Proceed only if you trust this action.</p>
+    <button id="modalContinue">Continue</button>
+  </div>
+</div>
+
+<script>
+// --- Snow ---
+const canvas = document.getElementById('snowCanvas');
+const ctx = canvas.getContext('2d');
+let width = canvas.width = window.innerWidth;
+let height = canvas.height = window.innerHeight;
+const snowflakes = [];
+for(let i=0;i<150;i++){ snowflakes.push({x:Math.random()*width,y:Math.random()*height,r:Math.random()*4+1,d:Math.random()*1,speed:Math.random()*1+0.5}); }
+function drawSnow(){ ctx.clearRect(0,0,width,height); ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.beginPath(); snowflakes.forEach(f=>{ ctx.moveTo(f.x,f.y); ctx.arc(f.x,f.y,f.r,0,Math.PI*2,true); }); ctx.fill(); updateSnow(); }
+function updateSnow(){ snowflakes.forEach(f=>{ f.y+=f.speed; f.x+=Math.sin(f.d); if(f.y>height){ f.y=0; f.x=Math.random()*width; } }); }
+function animateSnow(){ drawSnow(); requestAnimationFrame(animateSnow); }
+animateSnow(); window.addEventListener('resize',()=>{ width=canvas.width=window.innerWidth; height=canvas.height=window.innerHeight; });
+
+// --- Terminal ---
+const terminal = document.getElementById('terminal');
+const terminalOutput = document.getElementById('terminalOutput');
+const terminalInput = document.getElementById('terminalInput');
+const terminalSubmit = document.getElementById('terminalSubmit');
+const modal = document.getElementById('modal');
+const modalContinue = document.getElementById('modalContinue');
+const discordBtn = document.getElementById('discordBtn');
+const autocomplete = document.getElementById('autocomplete');
+discordBtn.addEventListener('click', ()=> window.open('https://discord.gg/hCWfvvXnud', '_blank'));
+
+// --- Draggable ---
+const header = document.getElementById('terminalHeader');
+let isDragging=false, ox=0, oy=0;
+header.addEventListener('mousedown', e=>{ const rect=terminal.getBoundingClientRect(); terminal.classList.remove('centered'); ox=e.clientX-rect.left; oy=e.clientY-rect.top; isDragging=true; });
+window.addEventListener('mousemove', e=>{ if(!isDragging) return; terminal.style.left=(e.clientX-ox)+'px'; terminal.style.top=(e.clientY-oy)+'px'; });
+window.addEventListener('mouseup', ()=>isDragging=false);
+
+// --- BroadcastChannel ---
+const adminChannel = new BroadcastChannel("ip_requests");
+
+// --- Commands: 15 keys ---
+const downloads = {
+'/download Fivem executor': { key:'FivemExecutor-QPL9-X7W2-ZKMA-AD18', link:'https://gofile.io/d/q3MAAU' },
+'/download Cs2 Exesternal': { key:'Cs2Exesternal-DELTA-88QW-LM2Z-9XK1-T7AP', link:'https://gofile.io/d/rsK5ei' },
+'/download Roblox exesternal': { key:'RobloxExesternal-1ZRM-W8K2-77PA', link:'https://gofile.io/d/PKTVgQ' },
+'/download Ida pro': { key:'Ida Pro-PL92-XQW7-ZKAM-18TD', link:'https://example.com/d' },
+'/download Windows Activator': { key:'Windows Activator-LYNX-PLX9-QW72-ZKMA-8TDR', link:'https://example.com/e' },
+'/download Tool 6': { key:'Tool6-M3N4-O5P6-Q7R8', link:'https://example.com/f' },
+'/download Tool 7': { key:'Tool7-S9T0-U1V2-W3X4', link:'https://example.com/g' },
+'/download Tool 8': { key:'Tool8-Y5Z6-A7B8-C9D0', link:'https://example.com/h' },
+'/download Tool 9': { key:'Tool9-E1F2-G3H4-I5J6', link:'https://example.com/i' },
+'/download Tool 10': { key:'Tool10-K7L8-M9N0-O1P2', link:'https://example.com/j' },
+'/download Tool 11': { key:'Tool11-Q3R4-S5T6-U7V8', link:'https://example.com/k' },
+'/download Tool 12': { key:'Tool12-W9X0-Y1Z2-A3B4', link:'https://example.com/l' },
+'/download Tool 13': { key:'Tool13-C5D6-E7F8-G9H0', link:'https://example.com/m' },
+'/download Tool 14': { key:'Tool14-I1J2-K3L4-M5N6', link:'https://example.com/n' },
+'/download Tool 15': { key:'Tool15-O7P8-Q9R0-S1T2', link:'https://example.com/o' }
+};
+let pendingLink=null, history=[], historyIndex=-1;
+const commandList = Object.keys(downloads).concat(['/check','/ip','/help','/downloads','/discord']);
+
+// --- Autocomplete ---
+terminalInput.addEventListener('input', ()=>{
+  const val = terminalInput.value;
+  autocomplete.innerHTML='';
+  if(!val.startsWith('/')){ autocomplete.style.display='none'; return; }
+  const suggestions = commandList.filter(c=>c.startsWith(val));
+  if(suggestions.length>0){ suggestions.forEach(s=>{ const div=document.createElement('div'); div.textContent=s; div.onclick=()=>{ terminalInput.value=s+' '; terminalInput.focus(); autocomplete.style.display='none'; }; autocomplete.appendChild(div); }); autocomplete.style.display='block'; }
+  else autocomplete.style.display='none';
+});
+
+// --- Utils ---
+function isValidIP(ip){ return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) && ip.split('.').every(n=>+n>=0 && +n<=255); }
+function isValidDiscordId(id){ return /^.+#\d{4}$/.test(id); }
+
+// --- Run Command ---
+function runCommand(){
+  const cmdLine = terminalInput.value.trim();
+  if(!cmdLine) return;
+  history.push(cmdLine); historyIndex=history.length;
+  terminalOutput.innerHTML+=`\n<span class="prompt">></span> ${cmdLine}`;
+  const parts = cmdLine.split(' '); const cmd=parts[0], key=parts[1];
+
+  if(downloads[cmd]){
+      if(key===downloads[cmd].key){ pendingLink=downloads[cmd].link; modal.style.display='flex'; }
+      else terminalOutput.innerHTML+=`\n<span class="error">Invalid security key for ${cmd}</span>`;
+  } else if(cmd==='/ip'){
+      const ip = parts[1]; const discordId = parts[2];
+      if(!discordId){ terminalOutput.innerHTML+=`\n<span class="error">Provide Discord ID (User#1234)</span>`; return; }
+      if(ip && !isValidIP(ip)){ terminalOutput.innerHTML+=`\n<span class="error">Invalid IP</span>`; return; }
+      const req = { discordId, ip: ip||null, time: new Date().toISOString() };
+      adminChannel.postMessage(req);
+      let logs = JSON.parse(localStorage.getItem("ipLogs")||"[]"); logs.unshift({...req,status:'pending'}); localStorage.setItem("ipLogs",JSON.stringify(logs));
+      terminalOutput.innerHTML+=`\n<span class="info">IP request sent for ${discordId}` + (ip?` with IP ${ip}`:'') + `</span>`;
+  } else if(cmd==='/help'){
+      terminalOutput.innerHTML+='\n<span class="info">Commands: /ip [IP] [Discord#1234], /downloadX [key], /check discord [id], /downloads, /discord [id], /help</span>';
+  } else terminalOutput.innerHTML+=`\n<span class="error">Unknown command: ${cmd}</span>`;
+  terminalOutput.scrollTop=terminalOutput.scrollHeight; terminalInput.value=''; autocomplete.style.display='none';
+}
+
+// --- Event listeners ---
+terminalSubmit.addEventListener('click', runCommand);
+terminalInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter') runCommand();
+  if(e.key==='ArrowUp'){ historyIndex=Math.max(0,historyIndex-1); terminalInput.value=history[historyIndex]||''; }
+  if(e.key==='ArrowDown'){ historyIndex=Math.min(history.length,historyIndex+1); terminalInput.value=history[historyIndex]||''; }
+});
+modalContinue.addEventListener('click', ()=>{ modal.style.display='none'; if(pendingLink){ window.location.href=pendingLink; pendingLink=null; } });
+
+// --- Init ---
+terminalInput.disabled=true; terminalSubmit.disabled=true;
+setTimeout(()=>{ terminalOutput.innerHTML='<span class="prompt">></span> <span class="info">Console ready.</span> Type /help for commands.'; terminalInput.disabled=false; terminalSubmit.disabled=false; terminalInput.focus(); },1800);
+</script>
+
+</body>
+</html>
+<script>
+/* ================================
+   BASIC ANTI-INSPECT
+================================ */
+
+// Disable right click
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Disable text selection
+document.addEventListener('selectstart', e => e.preventDefault());
+
+// Disable drag (images, text)
+document.addEventListener('dragstart', e => e.preventDefault());
+
+// Block common key combos
+document.addEventListener('keydown', function(e){
+  const key = e.key.toLowerCase();
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl / Cmd combos (except copy/paste/cut now)
+  if ((e.ctrlKey || e.metaKey) && (
+    key === 's' || // save
+    key === 'u' || // view source
+    key === 'p' || // print
+    key === 'a' || // select all
+    key === 'i' || // inspect
+    key === 'j'    // dev console
+  )) {
+    e.preventDefault();
+  }
+
+  // Ctrl + Shift combos
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (
+    key === 'i' || key === 'j' || key === 'c'
+  )) {
+    e.preventDefault();
+  }
+});
+
+// Detect devtools open (size-based)
+(function(){
+  let devtoolsOpen = false;
+  const threshold = 160;
+
+  setInterval(() => {
+    const widthDiff = window.outerWidth - window.innerWidth;
+    const heightDiff = window.outerHeight - window.innerHeight;
+
+    if (widthDiff > threshold || heightDiff > threshold) {
+      if (!devtoolsOpen) {
+        devtoolsOpen = true;
+        document.body.innerHTML = `
+          <div style="
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:100vh;
+            background:#0f1115;
+            color:#22c55e;
+            font-family:Inter,sans-serif;
+            font-size:22px;
+            text-align:center;
+          ">
+            Developer tools detected.<br>Access denied.
+          </div>
+        `;
+      }
+    }
+  }, 500);
+})();
+
+// Disable console usage
+(function(){
+  const noop = ()=>{};
+  console.log = noop;
+  console.warn = noop;
+  console.error = noop;
+  console.info = noop;
+  console.debug = noop;
+})();
+
+// Block iframe embedding
+if (window.top !== window.self) {
+  window.top.location = window.self.location;
+}
+</script>

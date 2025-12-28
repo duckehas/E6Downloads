@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Updates – Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family: 'Inter', sans-serif; }
+body { background: radial-gradient(1200px 800px at 10% 10%, #141826, #0f1115); color: #fff; padding:40px; min-height:100vh; }
+h1 { color:#22c55e; margin-bottom:20px; }
+.panel { background: rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.12); border-radius:18px; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,0.6); }
+ul { list-style:none; }
+li { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.1); }
+li span { color:#9fe0b3; font-size:12px; float:right; }
+.empty { text-align:center; padding:40px; color:#9fb4aa; }
+</style>
+</head>
+<body>
+
+<h1>Latest Updates</h1>
+
+<div class="panel">
+  <ul id="updatesList">
+    <li class="empty">Waiting for updates...</li>
+  </ul>
+</div>
+
+<script>
+const updatesList = document.getElementById('updatesList');
+const updatesChannel = new BroadcastChannel('updates_channel');
+
+// Load stored updates
+let updates = [];
+try {
+  updates = JSON.parse(localStorage.getItem('updates') || '[]');
+} catch { updates = []; }
+
+function renderUpdates() {
+  updatesList.innerHTML = '';
+  if(updates.length === 0){
+    updatesList.innerHTML = '<li class="empty">No updates yet</li>';
+    return;
+  }
+  updates.forEach(u => {
+    const li = document.createElement('li');
+    li.innerHTML = u.message + ' <span>' + new Date(u.time).toLocaleString() + '</span>';
+    updatesList.appendChild(li);
+  });
+}
+
+updatesChannel.onmessage = e => {
+  updates.unshift({...e.data});
+  localStorage.setItem('updates', JSON.stringify(updates));
+  renderUpdates();
+};
+
+// Initial render
+renderUpdates();
+</script>
+
+</body>
+</html>
